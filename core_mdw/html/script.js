@@ -30,6 +30,7 @@ var laoded = false;
 
 var evidence = [];
 var openedEvidence = null;
+var inventoryEvidenceItems = [];
 
 var incidents = [];
 var incident;
@@ -302,6 +303,33 @@ function search(t, field) {
           '      </div>';
 
         $("." + field).append(base)
+        limit = limit + 1;
+      }
+    }
+  }
+
+  if (field == 'inventoryevidence') {
+
+    var limit = 0;
+
+    for (const [key, value] of Object.entries(inventoryEvidenceItems)) {
+
+      var val = JSON.stringify(value).toLowerCase();
+
+      if (val.match(text) != null && limit < 50) {
+
+        var base = '      <div class="clearfix colelem box scale-up-center incident" onclick="selectInventoryEvidence(' + value.slot + ')" id="inventory-item-' + value.slot + '"><!-- group -->' +
+          '       <div class="grpelem" id="u707"  data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- simple frame --></div>' +
+          '       <div class="grpelem" id="u708" style="background: url(img/evidence.png); background-size: cover;" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- simple frame --></div>' +
+          '       <div class="clearfix grpelem" id="u709-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
+          '        <p>' + value.label + ' x' + value.amount + '</p>' +
+          '       </div>' +
+          '       <div class="clearfix grpelem" id="u1895-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
+          '        <p>Slot #' + value.slot + '</p>' +
+          '       </div>' +
+          '      </div>';
+
+        $(".inventoryevidence").append(base)
         limit = limit + 1;
       }
     }
@@ -2489,6 +2517,54 @@ function saveEvidence() {
 
 }
 
+function importInventoryEvidence() {
+
+  playClickSound();
+
+  $.post('https://core_mdw/requestInventoryEvidence', JSON.stringify({}));
+}
+
+function showInventoryEvidencePicker(items) {
+
+  inventoryEvidenceItems = items || [];
+
+  $('#addinginventoryevidence').remove();
+
+  var base = '<div class="slide-right" id="addinginventoryevidence">' +
+    '    <div class="grpelem" id="u1106" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- simple frame --></div>' +
+    '    <div class="clearfix grpelem" id="u1153-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
+    '     <p>INVENTORY EVIDENCE</p>' +
+    '    </div>' +
+    '    <div class="clearfix grpelem inventoryevidence" id="u1187"><!-- group -->' +
+    '    </div>' +
+    '    <input class="clearfix spacing grpelem" onInput="search(this, \'inventoryevidence\')" id="u1180"><!-- group -->' +
+    '     <div class="grpelem" id="u1181" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="fas fa-search"></i></div>' +
+    '    </input>' +
+    '    <div class="grpelem box" id="u1958" onclick="closeAdding(\'addinginventoryevidence\')" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="fas fa-times fa-lg"></i></div>' +
+    '</div>';
+
+  $('#evidence').append(base);
+
+  if (inventoryEvidenceItems.length === 0) {
+    sendNotification('No inventory items available for evidence.');
+    return;
+  }
+
+  search({
+    value: ''
+  }, 'inventoryevidence');
+}
+
+function selectInventoryEvidence(slot) {
+
+  $.post('https://core_mdw/createEvidenceFromInventory', JSON.stringify({
+    slot: slot
+  }));
+
+  closeAdding('addinginventoryevidence');
+  sendNotification('Inventory item submitted as evidence.');
+}
+
 
 
 function removeReport() {
@@ -2573,6 +2649,7 @@ function openEvidences() {
     '      <div class="grpelem box" onclick="saveEvidence()" id="u1817" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="far fa-save"></i></div>' +
     '      <div class="grpelem box" onclick="newEvidence()" id="u1818" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="far fa-file-alt"></i></div>' +
     '      <div class="grpelem box" onclick="removeEvidence()" id="u1819" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="far fa-trash-alt"></i></div>' +
+    '      <div class="grpelem box" onclick="importInventoryEvidence()" id="u1820" data-sizePolicy="fixed" data-pintopage="page_fluidx"><i class="fas fa-box-open"></i></div>' +
     '    <div class="clearfix grpelem" id="pu2192-4"><!-- column -->' +
     '     <div class="clearfix colelem" id="u2192-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
     '      <p>EVIDENCE</p>' +
@@ -3704,6 +3781,34 @@ window.addEventListener('message', function(event) {
 
 
 
+  }
+
+  if (edata.type == "inventoryEvidence") {
+    showInventoryEvidencePicker(edata.items);
+  }
+
+  if (edata.type == "inventoryEvidenceCreated") {
+
+    evidence[edata.id] = {
+      image: edata.image,
+      description: edata.description,
+      type: 'evidence'
+    };
+
+    var base = '      <div class="clearfix colelem box scale-up-center incident" onclick="openEvidence(\'' + edata.id + '\')" id="' + edata.id + '"><!-- group -->' +
+      '       <div class="grpelem" id="u707"  data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- simple frame --></div>' +
+      '       <div class="grpelem" id="u708" style="background: url(img/evidence.png); background-size: cover;" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- simple frame --></div>' +
+      '       <div class="clearfix grpelem" id="u709-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
+      '        <p>#' + edata.id + '</p>' +
+      '       </div>' +
+      '       <div class="clearfix grpelem" id="u1895-4" data-sizePolicy="fixed" data-pintopage="page_fluidx"><!-- content -->' +
+      '        <p>Physical Evidence</p>' +
+      '       </div>' +
+      '      </div>';
+
+    if ($('#u2195').length) {
+      $('#u2195').prepend(base);
+    }
   }
 
 

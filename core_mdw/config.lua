@@ -14,6 +14,16 @@ UsingCoreMultijob = false, -- (Will be available soon)
 UsingCoreInsurance = false, -- (Will be avilable soon)
 UsingQBHouses = true, -- Shows owned houses in user profile
 
+
+EvidenceInventory = {
+    Resource = 'qb-inventory', -- supported: qb-inventory, lj-inventory, ps-inventory
+    ItemNames = { -- whitelist of physical items that can be imported as evidence
+        ['weapon_pistol'] = true,
+        ['lockpick'] = true
+    }
+},
+
+
 Departaments = { -- Add departaments that can access MDW
 	['police'] = {label = "LSPD"}
 },

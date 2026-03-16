@@ -11,6 +11,62 @@ Callback = {}
 
 
 
+local function getConfiguredInventoryName()
+    if not Config.EvidenceInventory or not Config.EvidenceInventory.Resource then
+        return 'qb-inventory'
+    end
+
+    return Config.EvidenceInventory.Resource
+end
+
+local function getInventoryItems(src)
+    local inventoryName = getConfiguredInventoryName()
+
+    if inventoryName == 'qb-inventory' then
+        local Player = QBCore.Functions.GetPlayer(src)
+        if not Player or not Player.PlayerData or not Player.PlayerData.items then
+            return {}
+        end
+
+        return Player.PlayerData.items
+    end
+
+    local success, inventory = pcall(function()
+        return exports[inventoryName]:GetInventory(src)
+    end)
+
+    if success and inventory then
+        if inventory.items then
+            return inventory.items
+        end
+
+        return inventory
+    end
+
+    return {}
+end
+
+local function isEvidenceItemAllowed(name)
+    if not Config.EvidenceInventory or not Config.EvidenceInventory.ItemNames then
+        return false
+    end
+
+    return Config.EvidenceInventory.ItemNames[name] == true
+end
+
+local function findInventoryItemBySlot(src, slot)
+    local items = getInventoryItems(src)
+
+    for _, item in pairs(items) do
+        if item and tonumber(item.slot) == tonumber(slot) and isEvidenceItemAllowed(item.name) then
+            return item
+        end
+    end
+
+    return nil
+end
+
+
 function loadStaff()
     local query = "SELECT citizenid FROM players WHERE job LIKE "
 
@@ -794,6 +850,106 @@ AddEventHandler(
                 }
             }
         )
+    end
+)
+
+
+RegisterServerEvent("core_mdw:requestInventoryEvidence")
+AddEventHandler(
+    "core_mdw:requestInventoryEvidence",
+    function()
+        local src = source
+        local items = getInventoryItems(src)
+        local available = {}
+
+        for _, item in pairs(items) do
+            if item and item.name and isEvidenceItemAllowed(item.name) then
+                table.insert(
+                    available,
+                    {
+                        slot = item.slot,
+                        name = item.name,
+                        label = item.label or item.name,
+                        amount = item.amount or 1,
+                        info = item.info
+                    }
+                )
+            end
+        end
+
+        TriggerClientEvent("core_mdw:inventoryEvidence", src, available)
+    end
+)
+
+RegisterServerEvent("core_mdw:createEvidenceFromInventory")
+AddEventHandler(
+    "core_mdw:createEvidenceFromInventory",
+    function(slot)
+        local src = source
+        local Player = QBCore.Functions.GetPlayer(src)
+        if not Player then
+            return
+        end
+
+        local item = findInventoryItemBySlot(src, slot)
+        if not item then
+            TriggerClientEvent("core_mdw:sendMessage", src, "Item not found or not allowed as evidence")
+            return
+        end
+
+        Player.Functions.RemoveItem(item.name, 1, tonumber(slot))
+        if getConfiguredInventoryName() == 'qb-inventory' then
+            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item.name], "remove")
+        end
+
+        local id = tostring(math.random(10000, 99999))
+        while Evidence[id] ~= nil do
+            id = tostring(math.random(10000, 99999))
+        end
+
+        local details = item.label or item.name
+        if item.info then
+            local serialized = json.encode(item.info)
+            if serialized and serialized ~= '{}' then
+                details = details .. " | " .. serialized
+            end
+        end
+
+        local description = "Physical evidence imported from inventory: " .. details
+        local image = ""
+
+        Evidence[id] = {
+            image = image,
+            description = description,
+            type = "evidence"
+        }
+
+        exports.oxmysql:update(
+            "INSERT INTO `mdw_evidence`(`id`, `image`, `description`) VALUES (:id,:image,:description)",
+            {['id'] = id, ['image'] = image, ['description'] = description},
+            function()
+            end
+        )
+
+        sendToDiscord(
+            "Evidence created from inventory (#" .. id .. ")",
+            {
+                {
+                    ["name"] = "Item",
+                    ["value"] = item.name
+                },
+                {
+                    ["name"] = "Description",
+                    ["value"] = description
+                },
+                {
+                    ["name"] = "Created By",
+                    ["value"] = Users[Player.PlayerData.citizenid].name
+                }
+            }
+        )
+
+        TriggerClientEvent("core_mdw:inventoryEvidenceCreated", src, id, image, description)
     end
 )
 

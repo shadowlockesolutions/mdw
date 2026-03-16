@@ -613,6 +613,23 @@ RegisterNUICallback(
     end
 )
 
+
+RegisterNUICallback(
+    "requestInventoryEvidence",
+    function(data)
+        TriggerServerEvent("core_mdw:requestInventoryEvidence")
+    end
+)
+
+RegisterNUICallback(
+    "createEvidenceFromInventory",
+    function(data)
+        local slot = data["slot"]
+
+        TriggerServerEvent("core_mdw:createEvidenceFromInventory", slot)
+    end
+)
+
 RegisterNUICallback(
     "createIncident",
     function(data)
@@ -644,7 +661,7 @@ RegisterNUICallback(
         local jail, fine, person, charges = data["jail"], data["fine"], data["person"], data["charges"]
 
         TriggerServerEvent('core_mdw:sentance', person, tonumber(jail), tonumber(fine), charges)
-    
+
 
     end
 )
@@ -655,7 +672,7 @@ RegisterNUICallback(
         local text, field = data["text"], data['field']
 
         TriggerServerEvent('core_mdw:searchSQL', text, field)
-    
+
 
     end
 )
@@ -666,7 +683,7 @@ RegisterNUICallback(
         local users = data["users"]
 
         TriggerServerEvent('core_mdw:updateUsers', users)
-    
+
 
     end
 )
@@ -703,6 +720,35 @@ RegisterNUICallback(
     "sendMessage",
     function(data)
         SendTextMessage(Config.Text[data["message"]])
+    end
+)
+
+
+RegisterNetEvent("core_mdw:inventoryEvidence")
+AddEventHandler(
+    "core_mdw:inventoryEvidence",
+    function(items)
+        SendNUIMessage(
+            {
+                type = "inventoryEvidence",
+                items = items
+            }
+        )
+    end
+)
+
+RegisterNetEvent("core_mdw:inventoryEvidenceCreated")
+AddEventHandler(
+    "core_mdw:inventoryEvidenceCreated",
+    function(id, image, description)
+        SendNUIMessage(
+            {
+                type = "inventoryEvidenceCreated",
+                id = id,
+                image = image,
+                description = description
+            }
+        )
     end
 )
 
