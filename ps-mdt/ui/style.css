@@ -6748,3 +6748,77 @@ input[type="range"].vehicle-info-points-input::-moz-range-track {
 .leaflet-tooltip-right {
 	margin-left: 6px;
 }
+
+.incidents-upload-divider {
+    height: 1px;
+    width: 95%;
+    margin: 8px auto;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.incidents-evidence-inventory-row {
+    display: flex;
+    gap: 8px;
+    width: 95%;
+    margin: 0 auto;
+}
+
+#incidents-evidence-cid-input {
+    outline: none;
+    border: none;
+    flex: 1;
+    color: white;
+    font-size: 15px;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+#incidents-evidence-cid-input::placeholder {
+    color: white;
+}
+
+#incidents-evidence-load-btn {
+    border: none;
+    color: white;
+    background-color: var(--color-4);
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.incidents-evidence-inventory-results {
+    width: 95%;
+    max-height: 120px;
+    overflow-y: auto;
+    margin: 10px auto 0;
+}
+
+.incident-evidence-result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    background-color: rgba(255,255,255,0.08);
+    padding: 4px;
+    cursor: pointer;
+}
+
+.incident-evidence-result img,
+.incident-evidence-item-img {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+}
+
+.incident-evidence-item {
+    display: flex;
+    gap: 8px;
+    background-color: rgba(255,255,255,0.08);
+    margin-bottom: 6px;
+    padding: 6px;
+    align-items: center;
+}
+
+.incident-evidence-item-meta,
+.incident-evidence-empty {
+    font-size: 12px;
+    color: #cfcfcf;
+}

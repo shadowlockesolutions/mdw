@@ -119,6 +119,44 @@ function randomizeQuote() {
   return randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 }
 
+
+function buildEvidenceImage(url) {
+  return `<img src="${url}" class="incidents-img evidence-entry" data-evidence-type="image" data-evidence='${JSON.stringify({ type: "image", url: url }).replace(/'/g, "&#39;")}' onerror="this.src='img/not-found.webp'">`;
+}
+
+function buildEvidenceItemCard(item) {
+  const evidencePayload = {
+    type: "inventory_item",
+    citizenId: item.citizenId,
+    name: item.name,
+    label: item.label,
+    amount: item.amount,
+    slot: item.slot,
+    image: item.image,
+    info: item.info || {},
+  };
+
+  return `<div class="incident-evidence-item evidence-entry" data-evidence-type="inventory_item" data-evidence='${JSON.stringify(evidencePayload).replace(/'/g, "&#39;")}'><img src="nui://qb-inventory/html/images/${item.image}" class="incident-evidence-item-img" onerror="this.src='img/not-found.webp'"><div class="incident-evidence-item-info"><div>${item.label} x${item.amount}</div><div class="incident-evidence-item-meta">CID: ${item.citizenId} | Slot: ${item.slot || "N/A"}</div></div></div>`;
+}
+
+function appendEvidenceEntry(value) {
+  if (!value) return;
+
+  if (typeof value === "string") {
+    $(".manage-incidents-evidence-holder").append(buildEvidenceImage(value));
+    return;
+  }
+
+  if (value.type === "inventory_item") {
+    $(".manage-incidents-evidence-holder").append(buildEvidenceItemCard(value));
+    return;
+  }
+
+  if (value.type === "image" && value.url) {
+    $(".manage-incidents-evidence-holder").append(buildEvidenceImage(value.url));
+  }
+}
+
 function timeAgo(dateParam) {
   if (!dateParam) {
     return null;
@@ -645,10 +683,11 @@ $(document).ready(() => {
           });
 
         $(".manage-incidents-evidence-holder")
-          .find("img")
+          .find(".evidence-entry")
           .each(function () {
-            if ($(this).attr("src") != "") {
-              evidence.push($(this).attr("src"));
+            const rawEvidence = $(this).attr("data-evidence");
+            if (rawEvidence) {
+              evidence.push(JSON.parse(rawEvidence));
             }
           });
 
@@ -1343,22 +1382,30 @@ $(document).ready(() => {
   $("#incidents-upload-input").keydown(function (e) {
     if (e.keyCode === 13) {
       let URL = $("#incidents-upload-input").val();
-      let cid = $(".manage-profile-citizenid-input").val();
       if (URL !== "") {
-        let randomNum = Math.ceil(Math.random() * 10).toString();
-        $(".manage-incidents-evidence-holder").prepend(
-          `<img src="${URL}" class="incidents-img ${randomNum}" onerror="this.src='img/not-found.webp'">`
-        );
+        $(".manage-incidents-evidence-holder").prepend(buildEvidenceImage(URL));
         $("#incidents-upload-input").val("");
-        $(".incidents-upload-input").slideUp(250);
-        setTimeout(() => {
-          $(".incidents-upload-input").css("display", "none");
-        }, 250);
-        $(".manage-incidents-evidence-add-btn")
-          .removeClass("fa-minus")
-          .addClass("fa-plus");
       }
     }
+  });
+
+  $("#incidents-evidence-load-btn").click(function () {
+    const citizenId = $("#incidents-evidence-cid-input").val();
+    if (!citizenId) return;
+
+    $.post(
+      `https://${GetParentResourceName()}/getCitizenInventoryEvidence`,
+      JSON.stringify({ citizenId: citizenId })
+    );
+  });
+
+
+  $(".incidents-evidence-inventory-results").on("click", ".incident-evidence-result", function () {
+    const raw = $(this).attr("data-item");
+    if (!raw) return;
+
+    const item = JSON.parse(raw);
+    $(".manage-incidents-evidence-holder").prepend(buildEvidenceItemCard(item));
   });
 
   $(".manage-incidents-evidence-holder").on(
@@ -1546,6 +1593,15 @@ $(document).ready(() => {
         },
       ];
       openContextMenu(e, args);
+    }
+  );
+
+
+  $(".manage-incidents-evidence-holder").on(
+    "contextmenu",
+    ".incident-evidence-item",
+    function (e) {
+      $(this).remove();
     }
   );
 
@@ -4788,9 +4844,7 @@ window.addEventListener("message", function (event) {
 
       $(".manage-incidents-evidence-holder").empty();
       $.each(table["evidence"], function (index, value) {
-        $(".manage-incidents-evidence-holder").append(
-          `<img class="incidents-img" src=${value}>`
-        );
+        appendEvidenceEntry(value);
       });
 
       $(".manage-incidents-title-holder").empty();
@@ -4916,6 +4970,22 @@ window.addEventListener("message", function (event) {
           `
         );
       });
+    } else if (eventData.type == "citizenInventoryEvidence") {
+      $(".incidents-evidence-inventory-results").empty();
+      if (eventData.error) {
+        $(".incidents-evidence-inventory-results").append(`<div class="incident-evidence-empty">${eventData.error}</div>`);
+      } else if (!eventData.data || eventData.data.length === 0) {
+        $(".incidents-evidence-inventory-results").append(`<div class="incident-evidence-empty">No items found.</div>`);
+      } else {
+        $.each(eventData.data, function(index, item) {
+          $(".incidents-evidence-inventory-results").append(`
+            <div class="incident-evidence-result" data-item='${JSON.stringify({ ...item, citizenId: $("#incidents-evidence-cid-input").val() }).replace(/'/g, "&#39;")}'>
+              <img src="nui://qb-inventory/html/images/${item.image}" onerror="this.src='img/not-found.webp'">
+              <span>${item.label} x${item.amount}</span>
+            </div>
+          `);
+        });
+      }
     } else if (eventData.type == "boloData") {
       let table = eventData.data;
       $(".manage-bolos-editing-title").html(
