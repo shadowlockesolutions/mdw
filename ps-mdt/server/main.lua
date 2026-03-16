@@ -941,6 +941,58 @@ RegisterNetEvent('mdt:server:incidentSearchPerson', function(query)
     end
 end)
 
+RegisterNetEvent('mdt:server:getCitizenInventoryEvidence', function(citizenId)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    local JobType = GetJobType(Player.PlayerData.job.name)
+    if JobType ~= 'police' and JobType ~= 'doj' then return end
+
+    if not citizenId or citizenId == '' then
+        TriggerClientEvent('mdt:client:citizenInventoryEvidence', src, {}, 'Missing citizen id.')
+        return
+    end
+
+    local targetPlayer = QBCore.Functions.GetPlayerByCitizenId(citizenId)
+    local inventory = nil
+
+    if targetPlayer and targetPlayer.PlayerData then
+        inventory = targetPlayer.PlayerData.items
+    else
+        local result = MySQL.single.await('SELECT inventory FROM players WHERE citizenid = ?', { citizenId })
+        if result and result.inventory then
+            inventory = json.decode(result.inventory)
+        end
+    end
+
+    if type(inventory) ~= 'table' then
+        TriggerClientEvent('mdt:client:citizenInventoryEvidence', src, {}, 'No inventory found for this citizen id.')
+        return
+    end
+
+    local evidenceItems = {}
+    for _, item in pairs(inventory) do
+        if item and item.name and (tonumber(item.amount) or 0) > 0 then
+            local sharedItem = QBCore.Shared.Items[item.name] or QBCore.Shared.Items[string.lower(item.name)]
+            evidenceItems[#evidenceItems + 1] = {
+                name = item.name,
+                label = item.label or (sharedItem and sharedItem.label) or item.name,
+                amount = tonumber(item.amount) or 1,
+                slot = item.slot,
+                image = item.image or (sharedItem and sharedItem.image) or 'nui://qb-inventory/html/images/placeholder.png',
+                info = item.info or item.metadata or {}
+            }
+        end
+    end
+
+    table.sort(evidenceItems, function(a, b)
+        return (a.label or '') < (b.label or '')
+    end)
+
+    TriggerClientEvent('mdt:client:citizenInventoryEvidence', src, evidenceItems, nil)
+end)
+
 RegisterNetEvent('mdt:server:getAllReports', function()
 	local src = source
 	local Player = QBCore.Functions.GetPlayer(src)

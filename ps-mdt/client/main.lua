@@ -386,6 +386,12 @@ RegisterNUICallback("incidentSearchPerson", function(data, cb)
     cb(true)
 end)
 
+RegisterNUICallback("getCitizenInventoryEvidence", function(data, cb)
+    local citizenId = data.citizenId
+    TriggerServerEvent('mdt:server:getCitizenInventoryEvidence', citizenId)
+    cb(true)
+end)
+
 -- Handle sending a fine to a player
 -- Uses the QB-Core bill command to send a fine to a player
 -- If you use a different fine system, you will need to change this
@@ -455,6 +461,11 @@ end)
 
 RegisterNetEvent('mdt:client:incidentSearchPerson', function(sentData)
     SendNUIMessage({ type = "incidentSearchPerson", data = sentData })
+end)
+
+
+RegisterNetEvent('mdt:client:citizenInventoryEvidence', function(sentData, errorMsg)
+    SendNUIMessage({ type = "citizenInventoryEvidence", data = sentData, error = errorMsg })
 end)
 
 
